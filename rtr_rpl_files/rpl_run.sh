@@ -241,9 +241,9 @@ run() {
   
   if [ $CTF_FORMAT = 1 ] ; then
 	mkdir -p "$ROCP_OUTPUT_DIR/CTF_trace"
-	cp "/home/yoann/roctracer/metadata" "$ROCP_OUTPUT_DIR/CTF_trace/metadata"
+	cp "$CTF_PLUGIN/metadata" "$ROCP_OUTPUT_DIR/CTF_trace/metadata"
 	export CTF_FORMAT="enabled"
-	export ROCP_PLUGIN_LIB="/home/yoann/roctracer/ctflib/ctf_tool.so"
+	export ROCP_PLUGIN_LIB="$CTF_PLUGIN/ctf_tool.so"
   fi
 
   API_TRACE=""

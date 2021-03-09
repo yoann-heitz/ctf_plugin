@@ -7,6 +7,8 @@ The plugin uses barectf and priority queues to sort and trace events provided by
 
 ## Usage
 ```
+First, set the following environment variable:
+export CTF_PLUGIN=<path to plugin directory>
 To generate CTF traces you need to run the rocprof command with the --ctf-format option and an output directory for the traces (-d option)
 ```
 
