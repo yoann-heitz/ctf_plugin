@@ -57,8 +57,4 @@ Rebuild libtracer_tool.so and libtool.so in roctracer and rocprofiler with those
 Those new tool files will overload flushing functions in current roctracer/rocprofiler implementation with the plugin functions.
 -replace rpl_run.sh file in rocprofiler/bin by rpl_run.sh in rpl_rtr_files directory
 This new script will instanciate an environment variable if --ctf-format option is given in rocprof command
-You can automatically do theses last steps by running :
-export ROCPROFILER_PATH=<rocprofiler_path> (by default /opt/rocm/rocprofiler)
-export ROCTRACER_PATH=<roctracer_path>	(by default /opt/rocm/roctracer)
-./rebuild_rpl_rtr.sh
 ```
