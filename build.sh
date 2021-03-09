@@ -7,7 +7,7 @@ if [ -z "$ROCPROFILER_PATH" ]; then export ROCPROFILER_PATH=/opt/rocm/rocprofile
 #To change
 if [ -z "$ROCTRACER_SRC" ]; then export ROCTRACER_SRC=/opt/rocm/roctracer/src; fi
 if [ -z "$ROCTRACER_INCLUDES" ]; then export ROCTRACER_INCLUDES=/opt/rocm/roctracer/include; fi
-if [ -z "$ROCPROFILER_TEST" ]; then export ROCPROFILER_TEST=/opt/yoann/rocprofiler/test; fi
+if [ -z "$ROCPROFILER_TEST" ]; then export ROCPROFILER_TEST=/opt/rocm/rocprofiler/test; fi
 
 #Generate headers and cpp files for parsing
 python3 ./scripts/kfd_args_gen.py $ROCTRACER_PATH/include/kfd_prof_str.h
