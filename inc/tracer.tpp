@@ -1,3 +1,4 @@
+//Methods declarations for the Tracer template class
 template <typename event_T>
 Tracer<event_T>::Tracer(const char* prefix, const char* suffix)
 {

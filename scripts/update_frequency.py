@@ -1,3 +1,4 @@
+#Search the line for clock frequency in config.yaml and replace it with wanted value
 import re, os
 
 clock_frequency = os.getenv('CLOCK_FREQUENCY')

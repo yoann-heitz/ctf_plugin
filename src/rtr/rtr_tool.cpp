@@ -1,3 +1,4 @@
+//Declaration of the objects that will fill priority queues and extern functions that will be loaded in tool files
 #include <fstream>
 #include <unistd.h>
 #include <sstream>
@@ -32,11 +33,13 @@ bool kfd_api_trace = false;
 bool hip_api_trace = false;
 bool hip_activity_trace = false;
 
+//Tracing objects for HSA/HIP APIs and activity
 HSA_API_Tracer* hsa_api_tracer;
 HSA_Activity_Tracer* hsa_activity_tracer;
 HIP_API_Tracer* hip_api_tracer;
 HIP_Activity_Tracer* hip_activity_tracer;
 
+//Tracing objects for KFD API
 const char* output_dir;
 int nb_kfd_thread =0;
 thread_local bool kfd_thread_initialized = false;
@@ -48,6 +51,7 @@ hsa_rt_utils::Timer** timer_ptr;
 thread_local uint64_t kfd_begin_timestamp = 0;
 static thread_local bool in_kfd_api_callback = false;
 
+//Create the table that associates cids to function names and write it in a stream
 void write_table(barectf_default_ctx* ctx, activity_domain_t domain){
 	switch(domain){
 		case(ACTIVITY_DOMAIN_HSA_API):{
@@ -89,6 +93,7 @@ void write_table(barectf_default_ctx* ctx, activity_domain_t domain){
 	}
 }
 
+//Initialize tracing for some APIS
 extern "C" void load_ctf_lib(const char* output_prefix, activity_domain_t domain, void* data)
 {
   if(!rtr_plugin_initialized){
@@ -155,6 +160,7 @@ extern "C" void load_ctf_lib(const char* output_prefix, activity_domain_t domain
   } 
 }
 
+//Flush the priority queues
 extern "C" void flush_ctf()
 {
   if(hsa_api_trace){
@@ -176,6 +182,7 @@ extern "C" void flush_ctf()
   }
 }
 
+//Flush then unload the plugin
 extern "C" void unload_ctf_lib()
 {
 	flush_ctf();
@@ -202,7 +209,7 @@ extern "C" void unload_ctf_lib()
 	barectf_platform_linux_fs_fini(tables_platform_ctx);
 }
 
-
+//Functions that will be loaded in tool files and call tracing methodes
 extern "C" void hsa_activity_callback(
   uint32_t op,
   activity_record_t* record,

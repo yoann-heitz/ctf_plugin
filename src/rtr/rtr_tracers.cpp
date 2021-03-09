@@ -1,3 +1,4 @@
+//Declaration of callbacks and tracing functions for HIP/HSA APIS and activity and KFD API
 #include <tracer.h>
 #include <rtr_tracers.h>
 #include <roctracer_hsa_aux.h>
@@ -8,9 +9,6 @@
 #include <hip_args_str.h>
 #include <mutex>
 #include <cxxabi.h>
-
-
-
 
 static inline bool is_hip_kernel_launch_api(const uint32_t& cid) {
   bool ret =
@@ -85,7 +83,6 @@ void KFD_API_Tracer::kfd_api_flush_cb(uint64_t begin, uint64_t end, uint32_t cid
   callback(begin, (tracing_function)trace_kfd_api, new kfd_api_event_t(begin, GetTid(), BEGIN, cid, my_pid, *data));
   callback(end, (tracing_function)trace_kfd_api, new kfd_api_event_t(end, GetTid(), END));
 }
-
 
 //HIP API tracing function
 void trace_hip_api(hip_api_event_t* hip_api_event, struct barectf_default_ctx* ctx){

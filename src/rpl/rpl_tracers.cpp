@@ -1,3 +1,4 @@
+//Declaration of callbacks and tracing functions for kernel events
 #import "tracer.h"
 #import "rpl_tracers.h"
 #include "rpl_tool.h"

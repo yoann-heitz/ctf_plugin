@@ -1,3 +1,4 @@
+#Create cpp file for parsing data into strings
 import os, sys, re
 
 # API_prof_str header file given as an argument
@@ -5,7 +6,8 @@ api_str_hfile = sys.argv[1]
 if not os.path.isfile(api_str_hfile):
   print("Error : header not found")
   exit()
-  
+
+#Regex patterns for finding and replacing specific lines
 enum_pattern = re.compile(re.escape(r"enum hsa_api_id_t {"))
 enum_entry_pattern = re.compile(r"(\w+) = \d+")
 
@@ -21,12 +23,13 @@ out_replacement_pattern1 = re.compile(re.escape(r'out << ") = "'))
 out_replacement_pattern2 = re.compile(r'out << "\) = (\w+)"')
 
 
-# API declaration map
+#Scripts that will read the hsa_prof_str.h file and create an array containing cids and a function for data parsing in a hsa_args_str.cpp file
 with open(api_str_hfile, "r") as input_file:
     next_line = input_file.readline()
     while next_line and not(enum_pattern.match(next_line)):
         next_line = input_file.readline()
     
+    #Collect the cids
     enum_vector = "static const hsa_api_id_t all_hsa_api_func[] = { \n\t"
     while next_line and not(end_object_pattern.match(next_line)):  
         if(enum_entry_pattern.search(next_line)):
@@ -48,6 +51,7 @@ with open(api_str_hfile, "r") as input_file:
         while next_line and not(api_args_pattern.match(next_line)):
             next_line = input_file.readline()
             
+        #Create the parsing function
         api_args_begin = ("hsa_api_string_pair_t hsa_api_pair_of_args(uint32_t cid, hsa_api_data_t api_data)\n"
                           "{\n"
                           "  std::ostringstream ret;\n"
@@ -86,11 +90,14 @@ with open(api_str_hfile, "r") as input_file:
                         "}\n\n")
         cpp_file.write(api_args_end)
         
+        #Function that return the cids array
         enum_vector_fct = ("const hsa_api_id_t* hsa_api_table(){\n"
                            "\treturn all_hsa_api_func;\n"
                            "}\n\n")
         cpp_file.write(enum_vector_fct) 
         
+        
+        #Function that return the total number of cids
         get_size_fct = ("uint32_t GetHSAApiSize() {\n"
                         "\treturn sizeof(all_hsa_api_func)/sizeof(hsa_api_id_t);\n"
                         "}")

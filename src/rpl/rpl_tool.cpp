@@ -1,8 +1,11 @@
+//Declaration of the objects that will fill priority queues and extern functions that will be loaded in tool files for kernel events and metrics counters
 #include "barectf-platform-linux-fs.h"
 #include "barectf.h" 
 #include "tracer.h"
 #include "rpl_tracers.h"
 #include "rpl_tool.h"
+
+
 barectf_platform_linux_fs_ctx* platform_metrics;
 barectf_default_ctx* ctx_metrics;
 uint64_t metrics_clock = 0;
@@ -11,7 +14,6 @@ uint32_t dev_index = 0;
 uint32_t verbose = 0;
 bool kernel_event_initialized = false;
 bool metrics_tables_dumped = false;
-uint32_t idx = 0;
 uint32_t metrics_number = 0;
 uint32_t intermediate_metrics_number = 0;
 const char** metrics_names;
@@ -27,8 +29,6 @@ extern "C" void init_kernel_ctf_tracing(const char* prefix, std::vector<std::str
 		ctx_metrics = barectf_platform_linux_fs_get_barectf_ctx(platform_metrics);
 		kernel_event_tracer = new Kernel_Event_Tracer(prefix, "kernel_events_");
 		verbose = verbose_;
-		
-		//Initialize stream for metrics
 		metrics_number = metrics_vector.size();
 		kernel_event_initialized = true;
 	}else{

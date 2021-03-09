@@ -11,7 +11,7 @@
 #include "barectf-platform-linux-fs.h"
 #include "barectf.h" 
 
-#define MAX_SIZE 4 
+#define MAX_SIZE 200 
 
 struct barectf_platform_linux_fs_ctx {
 	struct barectf_default_ctx ctx;
@@ -54,19 +54,18 @@ public:
 //Generic class for HSA/HIP/KFD/Kernels tracing
 template <typename event_T>
 class Tracer {       
-  public:
+  protected:
 	typedef std::priority_queue<event_T*, std::vector<event_T*>, Compare>* queue_array_t;
-	typedef void (* tracing_function)(event_T* event, struct barectf_default_ctx* ctx);
+	uint32_t my_pid;	
 	const char* output_prefix;
 	const char* trace_suffix;
-	uint32_t my_pid;
-	
 	platform_array_t platform_array;
 	ctx_array_t ctx_array;
 	uint64_t* clock_array;
 	uint32_t size;
 	queue_array_t queue_array;
-	
+  public:
+    typedef void (* tracing_function)(event_T* event, struct barectf_default_ctx* ctx);
 	Tracer(const char* prefix, const char* suffix);
 	~Tracer();
 	void add_stream();
