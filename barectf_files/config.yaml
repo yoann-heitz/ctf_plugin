@@ -1,0 +1,165 @@
+# Needed YAML tag for the configuration object
+--- !<tag:barectf.org,2020/3/config>
+
+trace:
+  type:
+    $include:
+      - stdint.yaml
+      - stdmisc.yaml
+      
+    native-byte-order: little-endian
+
+    clock-types:
+      default:
+        frequency: 30
+        $c-type: uint64_t
+
+    data-stream-types:
+      default:
+        $is-default: true
+        $default-clock-type-name: default
+
+        event-record-types:
+          hsa_begin:
+            payload-field-type:
+              class: structure
+              members:
+                - cid: uint32
+                - pid: uint32
+                - tid: uint32
+                - args: string
+                - retval: string
+          hsa_end:
+            payload-field-type:
+              class: structure
+              members:
+                - tid: uint32
+          hsa_activity:
+            payload-field-type:
+              class: structure
+              members:
+                - pid: uint32
+                - index: uint64
+          kfd_begin:
+            payload-field-type:
+              class: structure
+              members:
+                - cid: uint32
+                - pid: uint32
+                - tid: uint32
+                - args: string
+                - retval: string
+          kfd_end:
+            payload-field-type:
+              class: structure
+              members:
+                - tid: uint32
+          hip_api_begin:
+            payload-field-type:
+              class: structure
+              members:
+                - cid: uint32
+                - pid: uint32
+                - tid: uint32
+                - args: string
+          hip_api_end:
+            payload-field-type:
+              class: structure
+              members:
+                - tid: uint32
+          hip_activity_begin:
+            payload-field-type:
+              class: structure
+              members:
+                - device_id: uint32
+                - queue_id: uint64
+                - name: string
+                - correlation_id: uint64
+                - pid: uint32
+          hip_activity_end:
+            payload-field-type:
+              class: structure
+              members:
+                - correlation_id: uint64
+          hsa_api_table:
+            payload-field-type:
+              class: structure
+              members:
+                - api_table:
+                    field-type:
+                        class: dynamic-array
+                        element-field-type: string
+          kfd_api_table:
+            payload-field-type:
+              class: structure
+              members:
+                - api_table:
+                    field-type:
+                        class: dynamic-array
+                        element-field-type: string
+          hip_api_table:
+            payload-field-type:
+              class: structure
+              members: 
+                - api_table:
+                    field-type:
+                        class: dynamic-array
+                        element-field-type: string
+
+          kernel_event_begin:
+            payload-field-type:
+              class: structure
+              members:
+                - dispatch: uint32
+                - gpu_id: uint32
+                - queue_id: uint32
+                - queue_index: uint64
+                - pid: uint32
+                - tid: uint32
+                - grd: uint32
+                - wgr: uint32
+                - lds: uint32
+                - scr: uint32
+                - vgpr: uint32
+                - sgpr: uint32
+                - fbar: uint32
+                - sig: 
+                    field-type:
+                        class: unsigned-integer
+                        size: 64
+                        preferred-display-base: hexadecimal
+                - obj:
+                    field-type:
+                        class: unsigned-integer
+                        size: 64
+                        preferred-display-base: hexadecimal
+                - kernel_name: string
+                - dispatch_time: uint64
+                - complete_time: uint64
+
+          kernel_event_end:
+            payload-field-type:
+              class: structure
+              members: 
+                - dispatch: uint32
+                - gpu_id: uint32
+                
+          metrics_table:
+            payload-field-type:
+              class: structure
+              members:
+                - metrics_names:
+                    field-type:
+                        class: dynamic-array
+                        element-field-type: string
+                        
+          metrics_values:
+            payload-field-type:
+              class: structure
+              members:
+                - dispatch: uint32
+                - gpu_id: uint32
+                - metrics:
+                    field-type:
+                        class: dynamic-array
+                        element-field-type: uint64

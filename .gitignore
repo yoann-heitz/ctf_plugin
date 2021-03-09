@@ -1,0 +1,3 @@
+/obj/*
+*.so
+inc/*_args_*

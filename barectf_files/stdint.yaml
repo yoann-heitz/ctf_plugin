@@ -1,0 +1,151 @@
+# Include this in a trace type object to have access to basic integer
+# type aliases.
+
+$field-type-aliases:
+  # 8-bit unsigned integer, 8-bit aligned
+  uint8:
+    class: uint
+    size: 8
+    alignment: 8
+  byte: uint8
+
+  # 8-bit signed integer, 8-bit aligned
+  sint8:
+    class: sint
+    size: 8
+    alignment: 8
+  int8: sint8
+
+  # 16-bit unsigned integer, 16-bit aligned
+  uint16:
+    class: uint
+    size: 16
+    alignment: 16
+  word: uint16
+
+  # 16-bit signed integer, 16-bit aligned
+  sint16:
+    class: sint
+    size: 16
+    alignment: 16
+  int16: sint16
+
+  # 32-bit unsigned integer, 32-bit aligned
+  uint32:
+    class: uint
+    size: 32
+    alignment: 32
+  dword: uint32
+
+  # 32-bit signed integer, 32-bit aligned
+  sint32:
+    class: sint
+    size: 32
+    alignment: 32
+  int32: sint32
+
+  # 64-bit unsigned integer, 64-bit aligned
+  uint64:
+    class: uint
+    size: 64
+    alignment: 64
+  qword: uint64
+
+  # 64-bit signed integer, 64-bit aligned
+  sint64:
+    class: sint
+    size: 64
+    alignment: 64
+  int64: sint64
+
+  # byte-packed 8-bit unsigned integer
+  byte-packed-uint8: uint8
+  byte-packed-byte: byte-packed-uint8
+
+  # byte-packed 8-bit signed integer
+  byte-packed-sint8: sint8
+  byte-packed-int8: byte-packed-sint8
+
+  # byte-packed 16-bit unsigned integer
+  byte-packed-uint16:
+    $inherit: uint16
+    alignment: 8
+  byte-packed-word: byte-packed-uint16
+
+  # byte-packed 16-bit signed integer
+  byte-packed-sint16:
+    $inherit: sint16
+    alignment: 8
+  byte-packed-int16: byte-packed-sint16
+
+  # byte-packed 32-bit unsigned integer
+  byte-packed-uint32:
+    $inherit: uint32
+    alignment: 8
+  byte-packed-dword: byte-packed-uint32
+
+  # byte-packed 32-bit signed integer
+  byte-packed-sint32:
+    $inherit: sint32
+    alignment: 8
+  byte-packed-int32: byte-packed-sint32
+
+  # byte-packed 64-bit unsigned integer
+  byte-packed-uint64:
+    $inherit: uint64
+    alignment: 8
+  byte-packed-qword: byte-packed-uint64
+
+  # byte-packed 64-bit signed integer
+  byte-packed-sint64:
+    $inherit: sint64
+    alignment: 8
+  byte-packed-int64: byte-packed-sint64
+
+  # byte-packed 8-bit unsigned integer
+  bit-packed-uint8:
+    $inherit: uint8
+    alignment: 1
+  bit-packed-byte: bit-packed-uint8
+
+  # bit-packed 8-bit signed integer
+  bit-packed-sint8:
+    $inherit: sint8
+    alignment: 1
+  bit-packed-int8: bit-packed-sint8
+
+  # bit-packed 16-bit unsigned integer
+  bit-packed-uint16:
+    $inherit: uint16
+    alignment: 1
+  bit-packed-word: bit-packed-uint16
+
+  # bit-packed 16-bit signed integer
+  bit-packed-sint16:
+    $inherit: sint16
+    alignment: 1
+  bit-packed-int16: bit-packed-sint16
+
+  # bit-packed 32-bit unsigned integer
+  bit-packed-uint32:
+    $inherit: uint32
+    alignment: 1
+  bit-packed-dword: bit-packed-uint32
+
+  # bit-packed 32-bit signed integer
+  bit-packed-sint32:
+    $inherit: sint32
+    alignment: 1
+  bit-packed-int32: bit-packed-sint32
+
+  # bit-packed 64-bit unsigned integer
+  bit-packed-uint64:
+    $inherit: uint64
+    alignment: 1
+  bit-packed-qword: bit-packed-uint64
+
+  # bit-packed 64-bit signed integer
+  bit-packed-sint64:
+    $inherit: sint64
+    alignment: 1
+  bit-packed-int64: bit-packed-sint64
