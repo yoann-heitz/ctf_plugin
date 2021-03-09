@@ -39,4 +39,17 @@ export ROCM_PATH=<path to rocm> (/opt/rocm by default)
 export HIP_PATH=<path to hip api> (/opt/rocm/include/hip by default) this directory must contain /hcc_detail/hip_prof_str.h file
 export ROCPROFILER_PATH=<path to rocprofiler> (/opt/rocm/rocprofiler by default)
 export ROCTRACER_INCLUDES=<path to roctracer includes>  (/opt/rocm/roctracer/include by default) this directory must contain roctracer_<hip|hsa|kfd>.h, <hsa|kfd>_prof_str.h and <hip|hsa|kfd>_ostream_ops.h files
+
+If you want to modify clock frequency (1000000000 by default) : export CLOCK_FREQUENCY=<new clock frequency as integer>
+Run build.sh : it will:
+-generate cpp files with functions to convert APIs data to strings from <hsa|kfd|hip>_prof_str.h
+-regenerate barectf tracing files if new clock frequency was given.
+-build the shared library ctf_tool.so with functions that will be loaded from tool.cpp files in rocprofiler/roctracer.
+
+Currently you have to manually modify rocprofiler/roctracer to allow the use of the module. To do so:
+-replace tracer_tool.cpp file in roctracer/test/tool by tracer_tool.cpp in rpl_rtr_files directory 
+-replace tool.cpp file in rocprofiler/test/tool by tool.cpp in rpl_rtr_files directory
+Those new tool files will overload flushing functions in current roctracer/rocprofiler implementation with the plugin functions.
+-replace rpl_run.sh file in rocprofiler/bin by rpl_run.sh in rpl_rtr_files directory
+This new script will instanciate an environment variable if --ctf-format option is given in rocprof command
 ```
