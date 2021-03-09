@@ -1,12 +1,12 @@
-#CTF Plugin for rocprofiler and roctracer
+# CTF Plugin for rocprofiler and roctracer
 The goal of the plugin is to generate CTF traces at runtime with rocprofiler and roctracer and avoid conversion overhead.
 The plugin currently allow to generate traces for HSA API/activity, HIP API/activity, KFD API and kernel events with counter metrics.
 The plugin uses barectf and priority queues to sort and trace events provided by rocprofiler/roctracer with minimal overhead.
 
-#Usage
+## Usage
 To generate CTF traces you need to run the rocprof command with the --ctf-format option and an output directory for the traces (-d option)
 
-#Informations about the generated traces
+## Informations about the generated traces
 For each API, the plugin will generate begin and end events. The begin events contains all the informations about the event (arguments of the functions, tid, pid, ...). The end events only contains the minimum information to link it to the associated beginning event.
 When generating a CTF trace, there will be the following files in the CTF_trace directory lying in the output directory:
 -a metadata file
@@ -14,7 +14,7 @@ When generating a CTF trace, there will be the following files in the CTF_trace 
 -a stream named tables_stream containing the tables that associates the cids of the traced functions to their names
 -multiple streams for each traced API with the following names : <pid>_<traced API>_<stream_identifier> where <stream identifier> is only an integer for HSA, HIP, kernel events and metrics traces and is tid followed by an integer for KFD traces.
 
-#To build the plugin
+## To build the plugin
 You will need the following things:
 python3
 rocprofiler files : https://github.com/ROCm-Developer-Tools/rocprofiler
@@ -22,7 +22,7 @@ roctracer files : https://github.com/ROCm-Developer-Tools/roctracer
 
 If you want to modify clock frequency (1000000000 by default) you will need barectf to regenerate the barectf tracing files : https://barectf.org/docs/barectf/3.0/install.html
 
-##Set the environment:
+### Set the environment:
 The plugin needs source and header files from roctracer and rocprofiler directories. You will need to set the following environment variables:
 export ROCTRACER_PATH=<path to roctracer>   (/opt/rocm/roctracer/src by default)
 export HSA_INCLUDE=<path to hsa-runtime includes> (/opt/rocm/include/hsa by default)
