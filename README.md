@@ -49,6 +49,7 @@ Run build.sh : it will:
 Currently you have to manually modify rocprofiler/roctracer to allow the use of the module. To do so:
 -replace tracer_tool.cpp file in roctracer/test/tool by tracer_tool.cpp in rpl_rtr_files directory 
 -replace tool.cpp file in rocprofiler/test/tool by tool.cpp in rpl_rtr_files directory
+Rebuild libtracer_tool.so and libtool.so in roctracer and rocprofiler with those 2 new files.
 Those new tool files will overload flushing functions in current roctracer/rocprofiler implementation with the plugin functions.
 -replace rpl_run.sh file in rocprofiler/bin by rpl_run.sh in rpl_rtr_files directory
 This new script will instanciate an environment variable if --ctf-format option is given in rocprof command
