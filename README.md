@@ -49,9 +49,14 @@ The plugin needs source and header files from roctracer and rocprofiler director
 
 
 
-If you want to modify clock frequency (1000000000 by default) : `export CLOCK_FREQUENCY=<new clock frequency as integer>`
+If you want to modify clock frequency (1000000000 by default) : 
+```
+export CLOCK_FREQUENCY=<new clock frequency as integer>
+```
 To build:
-`cd <your path/ctf_plugin> && ./build.sh`
+```
+cd <your path/ctf_plugin> && ./build.sh
+```
 It will:
 - generate cpp files with functions to convert APIs data to strings from `<hsa|kfd|hip>_prof_str.h`
 - regenerate barectf tracing files if new clock frequency was given.
