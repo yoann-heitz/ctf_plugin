@@ -12,7 +12,8 @@ First, set the following environment variable:
 export CTF_PLUGIN=<path to plugin directory>
 ```
 To generate CTF traces you need to run the rocprof command with the --ctf-format option and an output directory for the traces (-d option):
-```rocprof --ctf-format --hsa-trace my_program```
+
+```rocprof --ctf-format --hsa-trace -d my_traces my_program```
 
 
 ## Informations about the generated traces
