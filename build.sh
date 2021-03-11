@@ -21,4 +21,5 @@ if [ -n "$CLOCK_FREQUENCY" ]; then
 	barectf generate ./barectf_files/config.yaml --metadata-dir=./ --code-dir=./src --headers-dir=./inc;
 fi
 
+mkdir -p obj
 make all
