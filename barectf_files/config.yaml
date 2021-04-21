@@ -11,7 +11,7 @@ trace:
 
     clock-types:
       default:
-        frequency: 30
+        frequency: 1000000000
         $c-type: uint64_t
 
     data-stream-types:

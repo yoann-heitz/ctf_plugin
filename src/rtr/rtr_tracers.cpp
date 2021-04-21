@@ -71,9 +71,11 @@ void trace_kfd_api(kfd_api_event_t* kfd_event, struct barectf_default_ctx* ctx){
 		case BEGIN : {
 			kfd_api_string_pair_t arguments = kfd_api_pair_of_args(kfd_event->cid, kfd_event->data);
 			barectf_trace_kfd_begin(ctx, kfd_event->cid, kfd_event->pid, kfd_event->tid, arguments.first.c_str(), arguments.second.c_str());
+			break;
 		}
 		case END : {
 			barectf_trace_kfd_end(ctx, kfd_event->tid);
+			break;
 		}
 	}
 }
@@ -96,10 +98,12 @@ void trace_hip_api(hip_api_event_t* hip_api_event, struct barectf_default_ctx* c
 				ss << ", " << kernel_name;
 			}
 			ss<< ", " << (hip_api_event->data).correlation_id;
-			barectf_trace_hip_api_begin(ctx, hip_api_event->cid, hip_api_event->pid, hip_api_event->tid, ss.str().c_str());		
+			barectf_trace_hip_api_begin(ctx, hip_api_event->cid, hip_api_event->pid, hip_api_event->tid, ss.str().c_str());
+			break;
 		}
 		case END : {
 			barectf_trace_hip_api_end(ctx, hip_api_event->tid);
+			break;
 		}
 	}
 }
@@ -116,9 +120,11 @@ void trace_hip_activity(hip_activity_event_t* hip_activity_event, struct barectf
 		case BEGIN : {
 			roctracer_record_t record = hip_activity_event->record;
 			barectf_trace_hip_activity_begin(ctx, record.device_id, record.queue_id, hip_activity_event->name, record.correlation_id, GetPid());
+			break;
 		}
 		case END : {
 			barectf_trace_hip_activity_end(ctx, hip_activity_event->correlation_id);
+			break;
 		}
 	}
 
