@@ -33,9 +33,6 @@ You will need the following things:
 - rocprofiler files : <https://github.com/ROCm-Developer-Tools/rocprofiler>
 - roctracer files : <https://github.com/ROCm-Developer-Tools/roctracer>
 
-If you want to modify clock frequency (1000000000 by default) you will need barectf to regenerate the barectf tracing files : <https://barectf.org/docs/barectf/3.0/install.html>
-
-
 ### Set the environment:
 
 The plugin needs source and header files from roctracer and rocprofiler directories. You will need to set the following environment variables:
@@ -47,19 +44,12 @@ The plugin needs source and header files from roctracer and rocprofiler director
 - `export ROCPROFILER_TEST=<path to rocprofiler/test>` (/opt/rocm/rocprofiler/test by default)
 - `export ROCPROFILER_INCLUDES=<path to rocprofiler includes>` (/opt/rocm/rocprofiler/include by default)
 
-
-
-If you want to modify clock frequency (1000000000 by default) : 
-```
-export CLOCK_FREQUENCY=<new clock frequency as integer>
-```
 To build:
 ```
 cd <your path/ctf_plugin> && ./build.sh
 ```
 It will:
 - generate cpp files with functions to convert APIs data to strings from `<hsa|kfd|hip>_prof_str.h`
-- regenerate barectf tracing files if new clock frequency was given.
 - build the shared library `ctf_tool.so` with functions that will be loaded from tool.cpp files in `rocprofiler/roctracer`
 
 Currently you have to manually modify rocprofiler/roctracer to allow the use of the module. To do so:
