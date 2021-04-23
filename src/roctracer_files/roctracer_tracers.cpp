@@ -25,7 +25,7 @@
  */
 
 #include <tracer.h>
-#include <rtr_tracers.h>
+#include <roctracer_tracers.h>
 #include <roctracer_hsa_aux.h>
 #include <roctracer_hip_aux.h>
 #include <roctracer_kfd_aux.h>
