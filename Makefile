@@ -9,26 +9,30 @@ CIMP = -I ./inc -I $(ROCTRACER_SRC) -I $(HSA_INCLUDE) -I $(ROCM_PATH)/include -I
 CIMP2 = -I ./inc -I $(ROCPROFILER_TEST) -I $(ROCPROFILER_INCLUDES) -I $(HSA_INCLUDE)
 SRC_DIR = src
 AUX_DIR := src/aux
-RTR_DIR := src/rtr
-RPL_DIR := src/rpl
+ROCTRACER_FILES_DIR := src/roctracer_files
+ROCPROFILER_FILES_DIR := src/rocprofiler_files
 OBJ_DIR:= obj
-C_NAMES := barectf.o barectf-platform-linux-fs.o
-AUX_NAMES := roctracer_hip_aux.o roctracer_hsa_aux.o roctracer_kfd_aux.o
-CPP_NAMES := hsa_args_str.o kfd_args_str.o hip_args_str.o 
-RTR_NAMES := rtr_tool.o rtr_tracers.o
-RPL_NAMES := rpl_tool.o rpl_tracers.o
-COBJECTS := $(addprefix $(OBJ_DIR)/, $(C_NAMES))
-AUXOBJECTS := $(addprefix $(OBJ_DIR)/, $(AUX_NAMES))
-CPPOBJECTS := $(addprefix $(OBJ_DIR)/, $(CPP_NAMES))
-RTROBJECTS := $(addprefix $(OBJ_DIR)/, $(RTR_NAMES))
-RPLOBJECTS := $(addprefix $(OBJ_DIR)/, $(RPL_NAMES))
-all: ctf_tool.so
+C_NAMES := barectf barectf-platform-linux-fs
+AUX_NAMES := roctracer_hip_aux roctracer_hsa_aux roctracer_kfd_aux
+CPP_NAMES := hsa_args_str kfd_args_str hip_args_str 
+ROCTRACER_NAMES := roctracer_tool roctracer_tracers
+ROCPROFILER_NAMES := rocprofiler_tool rocprofiler_tracers
+C_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(C_NAMES)))
+AUX_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(AUX_NAMES)))
+CPP_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(CPP_NAMES)))
+ROCTRACER_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(ROCTRACER_NAMES)))
+ROCPROFILER_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(ROCPROFILER_NAMES)))
+all: rocprofiler_ctf_tool.so roctracer_ctf_tool.so
 
 
-ctf_tool.so: $(COBJECTS) $(AUXOBJECTS) $(CPPOBJECTS) $(RTROBJECTS) $(RPLOBJECTS) $(ROCM_PATH)/lib/libhsa-runtime64.so 
+rocprofiler_ctf_tool.so: $(C_OBJECTS) $(AUX_OBJECTS) $(CPP_OBJECTS) $(ROCPROFILER_OBJECTS) $(ROCM_PATH)/lib/libhsa-runtime64.so 
+	$(CXX)	$(LINKFLAGS) $^	-o $@
+	
+roctracer_ctf_tool.so: $(C_OBJECTS) $(AUX_OBJECTS) $(CPP_OBJECTS) $(ROCTRACER_OBJECTS) $(ROCM_PATH)/lib/libhsa-runtime64.so 
 	$(CXX)	$(LINKFLAGS) $^	-o $@ 
+		 
 clean:
-	$(RM) $(OBJ_DIR)/*.o ctf_tool.so
+	$(RM) $(OBJ_DIR)/*.o rocprofiler_ctf_tool.so roctracer_ctf_tool.so
 .PHONY : all clean
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c 
@@ -40,8 +44,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 $(OBJ_DIR)/%.o: $(AUX_DIR)/%.cpp
 	$(CXX) $(AUX_FLAGS)	$(CIMP) -c $^ -o $@
 	
-$(OBJ_DIR)/%.o: $(RTR_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(ROCTRACER_FILES_DIR)/%.cpp
 	$(CXX) $(RTR_FLAGS)	$(CIMP) -c $^ -o $@
 
-$(OBJ_DIR)/%.o: $(RPL_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(ROCPROFILER_FILES_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS)	$(CIMP2) -c $^ -o $@

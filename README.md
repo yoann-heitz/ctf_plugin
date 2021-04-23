@@ -50,14 +50,14 @@ cd <your path/ctf_plugin> && ./build.sh
 ```
 It will:
 - generate cpp files with functions to convert APIs data to strings from `<hsa|kfd|hip>_prof_str.h`
-- build the shared library `ctf_tool.so` with functions that will be loaded from tool.cpp files in `rocprofiler/roctracer`
+- build the shared libraries `rocprofiler_ctf_tool.so` and `roctracer_ctf_tool.so` with functions that will be loaded from tool.cpp and tracer_tool.cpp files in `rocprofiler/roctracer` 
 
 Currently you have to manually modify rocprofiler/roctracer to allow the use of the module. To do so:
-- replace `tracer_tool.cpp` file in `roctracer/test/tool` by `tracer_tool.cpp` in `rpl_rtr_files` directory 
-- replace `tool.cpp` file in `rocprofiler/test/tool by tool.cpp` in `rpl_rtr_files` directory
+- replace `tracer_tool.cpp` file in `roctracer/test/tool` by `tracer_tool.cpp` in `rocprofiler_roctracer_files` directory 
+- replace `tool.cpp` file in `rocprofiler/test/tool by tool.cpp` in `rocprofiler_roctracer_files` directory
 
 Rebuild libtracer_tool.so and libtool.so in roctracer and rocprofiler with those 2 new files.
 Those new tool files will overload flushing functions in current roctracer/rocprofiler implementation with the plugin functions.
-- replace `rpl_run.sh` file in `rocprofiler/bin` by `rpl_run.sh` in `rpl_rtr_files` directory
+- replace `rpl_run.sh` file in `rocprofiler/bin` by `rpl_run.sh` in `rocprofiler_roctracer_files` directory
 This new script will instanciate an environment variable if --ctf-format option is given in rocprof command
 
