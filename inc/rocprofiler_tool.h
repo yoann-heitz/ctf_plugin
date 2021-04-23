@@ -1,9 +1,6 @@
-#ifndef _BARECTF_PLATFORM_LINUX_FS_H
-#define _BARECTF_PLATFORM_LINUX_FS_H
-
 /*
- * Copyright (c) 2015 EfficiOS Inc. and Linux Foundation
- * Copyright (c) 2015-2020 Philippe Proulx <pproulx@efficios.com>
+ * The MIT License (MIT)
+ *
  * Copyright (c) 2021 Yoann Heitz <yoann.heitz@polymtl.ca>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -27,30 +24,39 @@
  * SOFTWARE.
  */
 
-#include <stdint.h>
-//#include <ext/hsa_rt_utils.hpp>
+#ifndef ROCPROFILER_TOOL_H_
+#define ROCPROFILER_TOOL_H_
+#include "rocprofiler.h"
+#include <hsa_ext_amd.h>
+#include "util/hsa_rsrc_factory.h"
+#include "util/xml.h"
 
-#ifdef __cplusplus
-extern "C" {
+struct kernel_properties_t
+{
+	uint32_t grid_size;
+	uint32_t workgroup_size;
+	uint32_t lds_size;
+	uint32_t scratch_size;
+	uint32_t vgpr_count;
+	uint32_t sgpr_count;
+	uint32_t fbarrier_count;
+	hsa_signal_t signal;
+	uint64_t object;
+};
+
+struct context_entry_t
+{
+	bool valid;
+	bool active;
+	uint32_t index;
+	hsa_agent_t agent;
+	rocprofiler_group_t group;
+	rocprofiler_feature_t *features;
+	unsigned feature_count;
+	rocprofiler_callback_data_t data;
+	kernel_properties_t kernel_properties;
+	HsaRsrcFactory::symbols_map_it_t kernel_name_it;
+	FILE *file_handle;
+};
+
 #endif
-
-struct barectf_default_ctx;
-struct barectf_platform_linux_fs_ctx;
-
-struct barectf_platform_linux_fs_ctx *barectf_platform_linux_fs_init(
-	unsigned int buf_size, const char *data_stream_file_path,
-	int simulate_full_backend, unsigned int full_backend_rand_max,
-	unsigned int full_backend_rand_lt,
-	uint64_t* clock_addr
-	);
-//hsa_rt_utils::Timer* timer
-void barectf_platform_linux_fs_fini(struct barectf_platform_linux_fs_ctx *ctx);
-
-struct barectf_default_ctx *barectf_platform_linux_fs_get_barectf_ctx(
-	struct barectf_platform_linux_fs_ctx *ctx);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _BARECTF_PLATFORM_LINUX_FS_H */

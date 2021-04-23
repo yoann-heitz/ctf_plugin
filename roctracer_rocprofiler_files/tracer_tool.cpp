@@ -886,7 +886,7 @@ void tool_load() {
   if(ctf_format != NULL){
     if (std::string(ctf_format).find("enabled") != std::string::npos) {
 		ctf_plugin = true;
-		const char* plugin_lib = getenv("ROCP_PLUGIN_LIB");
+		const char* plugin_lib = getenv("ROCTRACER_PLUGIN_LIB");
 		if(plugin_lib){  
 			dl_handle = dlopen(plugin_lib, RTLD_LAZY);
 			if (!dl_handle) {
