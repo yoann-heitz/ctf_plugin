@@ -122,7 +122,7 @@ extern "C" void load_ctf_lib(const char *output_prefix, activity_domain_t domain
 	{
 		rtr_plugin_initialized = true;
 		std::stringstream ss;
-		ss << output_prefix << "/CTF_trace/tables_stream";
+		ss << output_prefix << "/CTF_trace/strings_association_stream";
 		tables_platform_ctx = barectf_platform_linux_fs_init(512, ss.str().c_str(), 0, 0, 0, &tables_clock);
 		tables_ctx = barectf_platform_linux_fs_get_barectf_ctx(tables_platform_ctx);
 	}
