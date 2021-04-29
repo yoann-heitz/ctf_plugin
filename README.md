@@ -20,10 +20,10 @@ To generate CTF traces you need to run the rocprof command with the --ctf-format
 
 For each API, the plugin will generate begin and end events. The begin events contains all the informations about the event (arguments of the functions, tid, pid, ...). The end events only contains the minimum information to link it to the associated beginning event.
 When generating a CTF trace, there will be the following files in the CTF_trace directory lying in the output directory:
--a metadata file
--a stream named `metrics_stream` containing the names of the collected metrics 
--a stream named `tables_stream` containing the tables that associates the cids of the traced functions to their names
--multiple streams for each traced API with the following names : `<pid>_<traced API>_<stream_identifier>` where <stream identifier> is only an integer for HSA, HIP, kernel events and metrics traces and is tid followed by an integer for KFD traces.
+- a metadata file
+- a stream named `metrics_stream` containing the names of the collected metrics 
+- a stream named `strings_association_stream` containing events that associates the cids of the traced functions to their names
+- multiple streams for each traced API with the following names : `<pid>_<traced API>_<stream_identifier>` where <stream identifier> is only an integer for HSA, HIP, kernel events and metrics traces and is tid followed by an integer for KFD traces.
 
 
 ## To build the plugin
