@@ -54,7 +54,7 @@ with open(api_str_hfile, "r") as input_file:
 
         cpp_file.write(enum_vector)
 
-        while next_line and not(api_args_pattern.match(next_line)):
+        while next_line and not(api_args_pattern.search(next_line)):
             next_line = input_file.readline()
 
         # Create the parsing function
@@ -67,7 +67,7 @@ with open(api_str_hfile, "r") as input_file:
 
         while next_line and not(case_pattern.search(next_line)):
             next_line = input_file.readline()
-
+            
         while(1):
             if(case_pattern.search(next_line)):
                 cpp_file.write(next_line)

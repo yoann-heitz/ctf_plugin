@@ -84,39 +84,30 @@ void write_table(barectf_default_ctx *ctx, activity_domain_t domain)
 	{
 		const hsa_api_id_t *hsa_table = hsa_api_table();
 		uint32_t hsa_table_size = GetHSAApiSize();
-		const char **hsa_table_str = new const char *[hsa_table_size];
 		for (int i = 0; i < hsa_table_size; i++)
 		{
-			hsa_table_str[i] = GetHSAApiName(hsa_table[i]);
+			barectf_trace_hsa_function_name(ctx, hsa_table[i], GetHSAApiName(hsa_table[i]));
 		}
-		barectf_trace_hsa_api_table(ctx, hsa_table_size, hsa_table_str);
-		delete[] hsa_table_str;
 		break;
 	}
 	case (ACTIVITY_DOMAIN_KFD_API):
 	{
 		const kfd_api_id_t *kfd_table = kfd_api_table();
 		int kfd_table_size = GetKFDApiSize();
-		const char **kfd_table_str = new const char *[kfd_table_size];
 		for (int i = 0; i < kfd_table_size; i++)
 		{
-			kfd_table_str[i] = GetKFDApiName(kfd_table[i]);
+			barectf_trace_kfd_function_name(ctx, kfd_table[i], GetKFDApiName(kfd_table[i]));
 		}
-		barectf_trace_kfd_api_table(ctx, kfd_table_size, kfd_table_str);
-		delete[] kfd_table_str;
 		break;
 	}
 	case (ACTIVITY_DOMAIN_HIP_API):
 	{
 		const hip_api_id_t *hip_table = hip_api_table();
 		int hip_table_size = GetHIPApiSize();
-		const char **hip_table_str = new const char *[hip_table_size];
 		for (int i = 0; i < hip_table_size; i++)
 		{
-			hip_table_str[i] = GetHIPApiName(hip_table[i]);
+			barectf_trace_hip_function_name(ctx, hip_table[i], GetHIPApiName(hip_table[i]));
 		}
-		barectf_trace_hip_api_table(tables_ctx, hip_table_size, hip_table_str);
-		delete[] hip_table_str;
 		break;
 	}
 	default:
@@ -131,8 +122,8 @@ extern "C" void load_ctf_lib(const char *output_prefix, activity_domain_t domain
 	{
 		rtr_plugin_initialized = true;
 		std::stringstream ss;
-		ss << output_prefix << "/CTF_trace/tables_stream";
-		tables_platform_ctx = barectf_platform_linux_fs_init(15000, ss.str().c_str(), 0, 0, 0, &tables_clock);
+		ss << output_prefix << "/CTF_trace/strings_association_stream";
+		tables_platform_ctx = barectf_platform_linux_fs_init(512, ss.str().c_str(), 0, 0, 0, &tables_clock);
 		tables_ctx = barectf_platform_linux_fs_get_barectf_ctx(tables_platform_ctx);
 	}
 
