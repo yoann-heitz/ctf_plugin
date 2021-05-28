@@ -857,7 +857,6 @@ void tool_unload() {
 	unload_ctf_lib();
 	dlclose(dl_handle);
   }
-  close_file_handles();
 
   ONLOAD_TRACE_END();
 }
@@ -1271,6 +1270,7 @@ extern "C" DESTRUCTOR_API void destructor() {
   
   roctracer_flush_buf();
   tool_unload();
+  close_file_handles();
 
   if (hip_api_stats) hip_api_stats->dump();
   if (hip_kernel_stats) hip_kernel_stats->dump();

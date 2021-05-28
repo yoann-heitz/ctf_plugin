@@ -43,9 +43,9 @@ inline std::ostream &operator<<(std::ostream &out, const char &v)
 }
 const char *GetHIPApiName(const uint32_t &id);
 #endif
-#include <hip_ostream_ops.h>
 #include <hip/hip_runtime.h>
-#include <hip/hcc_detail/hip_prof_str.h>
+#include <hip_ostream_ops.h>
+#include <hip/amd_detail/hip_prof_str.h>
 
 #ifdef __cplusplus
 extern "C"
