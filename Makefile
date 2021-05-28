@@ -15,13 +15,13 @@ OBJ_DIR:= obj
 C_NAMES := barectf barectf-platform-linux-fs
 AUX_NAMES := roctracer_hip_aux roctracer_hsa_aux roctracer_kfd_aux
 CPP_NAMES := hsa_args_str kfd_args_str hip_args_str 
-ROCTRACER_NAMES := roctracer_tool roctracer_tracers.o
-ROCPROFILER_NAMES := rocprofiler_tool.o rocprofiler_tracers.o
-C_OBJECTS := $(addsuffix $(addprefix $(OBJ_DIR)/, $(C_NAMES)), .o)
-AUX_OBJECTS := $(addsuffix $(addprefix $(OBJ_DIR)/, $(AUX_NAMES)), .o)
-CPP_OBJECTS := $(addsuffix $(addprefix $(OBJ_DIR)/, $(CPP_NAMES)), .o)
-ROCTRACER_OBJECTS := $(addsuffix $(addprefix $(OBJ_DIR)/, $(ROCTRACER_NAMES)), .o)
-ROCPROFILER_OBJECTS := $(addsuffix $(addprefix $(OBJ_DIR)/, $(ROCPROFILER_NAMES)), .o)
+ROCTRACER_NAMES := roctracer_tool roctracer_tracers
+ROCPROFILER_NAMES := rocprofiler_tool rocprofiler_tracers
+C_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(C_NAMES)))
+AUX_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(AUX_NAMES)))
+CPP_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(CPP_NAMES)))
+ROCTRACER_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(ROCTRACER_NAMES)))
+ROCPROFILER_OBJECTS := $(addsuffix .o, $(addprefix $(OBJ_DIR)/, $(ROCPROFILER_NAMES)))
 all: rocprofiler_ctf_tool.so roctracer_ctf_tool.so
 
 
@@ -44,8 +44,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 $(OBJ_DIR)/%.o: $(AUX_DIR)/%.cpp
 	$(CXX) $(AUX_FLAGS)	$(CIMP) -c $^ -o $@
 	
-$(OBJ_DIR)/%.o: $(RTR_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(ROCTRACER_FILES_DIR)/%.cpp
 	$(CXX) $(RTR_FLAGS)	$(CIMP) -c $^ -o $@
 
-$(OBJ_DIR)/%.o: $(RPL_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(ROCPROFILER_FILES_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS)	$(CIMP2) -c $^ -o $@
