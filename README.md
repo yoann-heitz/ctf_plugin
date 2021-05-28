@@ -23,7 +23,7 @@ When generating a CTF trace, there will be the following files in the CTF_trace 
 - a metadata file
 - a stream named `metrics_stream` containing the names of the collected metrics 
 - a stream named `strings_association_stream` containing events that associates the cids of the traced functions to their names
-- multiple streams for each traced API with the following names : `<pid>_<traced API>_<stream_identifier>` where <stream identifier> is only an integer for HSA, HIP, kernel events and metrics traces and is tid followed by an integer for KFD traces.
+- multiple streams for each traced API with the following names : `<pid>_<traced API>_<stream_identifier>` where `<stream identifier>` is only an integer for HSA, HIP, kernel events and metrics traces and is tid followed by an integer for KFD traces.
 
 
 ## To build the plugin
