@@ -50,7 +50,7 @@ Tracer<event_T>::Tracer(const char *prefix, const char *suffix)
 		std::stringstream ss;
 		ss << output_prefix << "/CTF_trace/" << my_pid << "_" << trace_suffix << i;
 		clock_array[i] = 0;
-		platform_array[i] = barectf_platform_linux_fs_init(1024, ss.str().c_str(), 0, 0, 0, &(clock_array[i]));
+		platform_array[i] = barectf_platform_linux_fs_init(16384, ss.str().c_str(), 0, 0, 0, &(clock_array[i]));
 		ctx_array[i] = barectf_platform_linux_fs_get_barectf_ctx(platform_array[i]);
 	}
 };
@@ -95,7 +95,7 @@ void Tracer<event_T>::add_stream()
 	std::stringstream ss;
 	ss << output_prefix << "/CTF_trace/" << my_pid << "_" << trace_suffix << size;
 	clock_array[size] = 0;
-	platform_array[size] = barectf_platform_linux_fs_init(1024, ss.str().c_str(), 0, 0, 0, &(clock_array[size]));
+	platform_array[size] = barectf_platform_linux_fs_init(16384, ss.str().c_str(), 0, 0, 0, &(clock_array[size]));
 	ctx_array[size] = barectf_platform_linux_fs_get_barectf_ctx(platform_array[size]);
 	size++;
 };

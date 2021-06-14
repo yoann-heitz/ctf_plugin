@@ -38,6 +38,8 @@ THE SOFTWARE.
 #include <sys/types.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <mutex>
+std::mutex mtx;
 
 #include <atomic>
 #include <chrono>
@@ -147,6 +149,9 @@ static uint32_t CTX_OUTSTANDING_MON = 0;
 uint32_t to_truncate_names = 0;
 // local trace buffer
 bool is_trace_local = true;
+// SPM trace enabled
+bool is_spm_trace = false;
+uint32_t spm_kfd_mode = 0;
 
 static inline uint32_t GetPid() { return syscall(__NR_getpid); }
 static inline uint32_t GetTid() { return syscall(__NR_gettid); }
@@ -333,11 +338,160 @@ context_entry_t* ck_ctx_entry(hsa_agent_t agent, bool& found) {
   return ret.first->second;
 }
 
+// Dump trace data to file
+void dump_sqtt_trace(const char* label, const uint32_t chunk, const void* data, const uint32_t& size) {
+  if (result_prefix != NULL) {
+    // Open file
+    std::ostringstream oss;
+    oss << result_prefix << "/thread_trace_" << label << "_se" << chunk << ".out";
+    FILE* file = fopen(oss.str().c_str(), "w");
+    if (file == NULL) {
+      std::ostringstream errmsg;
+      errmsg << "fopen error, file '" << oss.str().c_str() << "'";
+      perror(errmsg.str().c_str());
+      abort();
+    }
+
+    // Write the buffer in terms of shorts (16 bits)
+    const unsigned short* ptr = reinterpret_cast<const unsigned short*>(data);
+    for (uint32_t i = 0; i < (size / sizeof(short)); ++i) {
+      fprintf(file, "%04x\n", ptr[i]);
+    }
+
+    // Close file
+    fclose(file);
+  }
+}
+
+// Dump trace data to file
+void dump_spm_trace(const char* label, const void* data, const uint32_t& size) {
+  if (result_prefix != NULL) {
+    // Open trace file
+    std::ostringstream oss;
+    oss << result_prefix << "/spm_trace_" << label << ".out";
+    const int fd = open(oss.str().c_str(), O_CREAT|O_WRONLY|O_APPEND, 0666);
+    if (fd == -1) {
+      std::ostringstream errmsg;
+      errmsg << "open error, file '" << oss.str().c_str() << "'";
+      perror(errmsg.str().c_str());
+      abort();
+    }
+    // write trace binary data
+    if (write(fd, data, size) == -1) {
+      std::ostringstream errmsg;
+      errmsg << "write error, file '" << oss.str().c_str() << "'";
+      perror(errmsg.str().c_str());
+      abort();
+    }
+    // Close file
+    close(fd);
+  }
+}
+
 struct trace_data_arg_t {
   FILE* file;
   const char* label;
   hsa_agent_t agent;
 };
+
+// Trace data callback for getting trace data from GPU local memory
+hsa_status_t trace_data_cb(hsa_ven_amd_aqlprofile_info_type_t info_type,
+                           hsa_ven_amd_aqlprofile_info_data_t* info_data, void* data) {
+  hsa_status_t status = HSA_STATUS_SUCCESS;
+  trace_data_arg_t* arg = reinterpret_cast<trace_data_arg_t*>(data);
+  if (info_type == HSA_VEN_AMD_AQLPROFILE_INFO_TRACE_DATA) {
+    if (is_spm_trace) {
+#if 0
+      if (info_data->sample_id != 0) {
+        fatal("Only one SPM sample expected");
+      }
+#endif
+      const void* data_ptr = info_data->trace_data.ptr;
+      const uint32_t data_size = info_data->trace_data.size;
+      fprintf(arg->file, "    size(%u)\n", data_size);
+
+      if (is_trace_local == false) fatal("SPM trace supports only local trace allocation");
+      HsaRsrcFactory* hsa_rsrc = &HsaRsrcFactory::Instance();
+      const AgentInfo* agent_info = hsa_rsrc->GetAgentInfo(arg->agent);
+      void* buffer = hsa_rsrc->AllocateSysMemory(agent_info, data_size);
+      if(!hsa_rsrc->Memcpy(agent_info, buffer, data_ptr, data_size)) {
+        fatal("Trace data memcopy to host failed");
+      }
+      dump_spm_trace(arg->label, buffer, data_size);
+      HsaRsrcFactory::FreeMemory(buffer);
+    } else {
+      const void* data_ptr = info_data->trace_data.ptr;
+      const uint32_t data_size = info_data->trace_data.size;
+      fprintf(arg->file, "    SE(%u) size(%u)\n", info_data->sample_id, data_size);
+
+      if (is_trace_local) {
+        HsaRsrcFactory* hsa_rsrc = &HsaRsrcFactory::Instance();
+        const AgentInfo* agent_info = hsa_rsrc->GetAgentInfo(arg->agent);
+	void* buffer = NULL;
+
+        if (data_size != 0) {
+          buffer = hsa_rsrc->AllocateSysMemory(agent_info, data_size);
+          if (buffer == NULL) {
+            fatal("Trace data buffer allocation failed");
+          }
+          if(!hsa_rsrc->Memcpy(agent_info, buffer, data_ptr, data_size)) {
+            fatal("Trace data memcopy to host failed");
+          }
+        }
+
+        dump_sqtt_trace(arg->label, info_data->sample_id, buffer, data_size);
+
+        if (buffer != NULL) HsaRsrcFactory::FreeMemory(buffer);
+      } else {
+        dump_sqtt_trace(arg->label, info_data->sample_id, data_ptr, data_size);
+      }
+    }
+  } else
+    status = HSA_STATUS_ERROR;
+  return status;
+}
+
+// SPM counter trace start/stop methods
+std::vector<rocprofiler_t*> spm_ctx_vec;
+void spm_ctrl_start(rocprofiler_feature_t* features, uint32_t features_found) {
+  // Start SPM trace collection for all GPUs
+  uint32_t gpu_count = HsaRsrcFactory::Instance().GetCountOfGpuAgents();
+  for (uint32_t idx = 0; idx < gpu_count; ++idx) {
+    const AgentInfo* agent_info = NULL;
+    const bool ret = HsaRsrcFactory::Instance().GetGpuAgentInfo(idx, &agent_info);
+    if (!ret) {
+      printf("rocprof: spm_ctrl_start error, gpu(%u)\n", idx);
+      abort();
+    }
+    hsa_agent_t agent = agent_info->dev_id;
+
+    rocprofiler_properties_t properties{};
+    properties.queue_depth = 256;
+
+    // Creating SPM context
+    rocprofiler_t* context = NULL;
+    hsa_status_t status = rocprofiler_open(agent, features, features_found, &context,
+                                           ROCPROFILER_MODE_STANDALONE|ROCPROFILER_MODE_CREATEQUEUE, &properties);
+    check_status(status);
+    // Start reading SPM data
+    trace_data_arg_t trace_data_arg{result_file_handle, "glob", agent};
+    status = rocprofiler_iterate_trace_data(context, trace_data_cb, reinterpret_cast<void*>(&trace_data_arg));
+    check_status(status);
+    // Start SPM HW trace
+    status = rocprofiler_start(context, 0);
+    check_status(status);
+    // saving the context in the vectort
+    spm_ctx_vec.push_back(context);
+  }
+}
+void spm_ctrl_stop() {
+  for (rocprofiler_t* context : spm_ctx_vec) {
+    hsa_status_t status = rocprofiler_stop(context, 0);
+    check_status(status);
+    rocprofiler_close(context);
+  }
+}
+
 
 // Align to specified alignment
 unsigned align_size(unsigned size, unsigned alignment) {
@@ -349,6 +503,7 @@ void output_results(const context_entry_t* entry, const char* label) {
   FILE* file = entry->file_handle;
   const rocprofiler_feature_t* features = entry->features;
   const unsigned feature_count = entry->feature_count;
+  rocprofiler_t* context = entry->group.context;
 
   for (unsigned i = 0; i < feature_count; ++i) {
     const rocprofiler_feature_t* p = &features[i];
@@ -358,7 +513,38 @@ void output_results(const context_entry_t* entry, const char* label) {
       case ROCPROFILER_DATA_KIND_INT64:
         fprintf(file, "(%lu)\n", p->data.result_int64);
         break;
+      // Output trace results
+      case ROCPROFILER_DATA_KIND_BYTES: {
+        if (p->data.result_bytes.copy) {
+          uint64_t size = 0;
+
+          const char* ptr = reinterpret_cast<const char*>(p->data.result_bytes.ptr);
+          const char* end = reinterpret_cast<const char*>(ptr + p->data.result_bytes.size);
+          for (unsigned i = 0; i < p->data.result_bytes.instance_count; ++i) {
+            const uint32_t chunk_size = *reinterpret_cast<const uint32_t*>(ptr);
+            const char* chunk_data = ptr + sizeof(uint32_t);
+            if (chunk_data >= end) fatal("Trace data is out of the result buffer size");
+
+            dump_sqtt_trace(label, i, chunk_data, chunk_size);
+            const uint32_t off = align_size(chunk_size, sizeof(uint32_t));
+            ptr = chunk_data + off;
+            if (chunk_data >= end) fatal("Trace data ptr is out of the result buffer size");
+            size += chunk_size;
+          }
+          fprintf(file, "size(%lu)\n", size);
+          HsaRsrcFactory::FreeMemory(p->data.result_bytes.ptr);
+          const_cast<rocprofiler_feature_t*>(p)->data.result_bytes.size = 0;
+        } else {
+          fprintf(file, "(\n");
+          trace_data_arg_t trace_data_arg{file, label, entry->agent};
+          hsa_status_t status = rocprofiler_iterate_trace_data(context, trace_data_cb, reinterpret_cast<void*>(&trace_data_arg));
+          check_status(status);
+          fprintf(file, "  )\n");
+        }
+        break;
+      }
       default:
+        if (is_spm_trace) continue;
         fprintf(stderr, "RPL-tool: undefined data kind(%u)\n", p->data.kind);
         abort();
     }
@@ -369,7 +555,6 @@ void output_results(const context_entry_t* entry, const char* label) {
 void output_group(const context_entry_t* entry, const char* label) {
   const rocprofiler_group_t* group = &(entry->group);
   context_entry_t group_entry = *entry;
-  printf("%u\n", group->feature_count);	
   for (unsigned i = 0; i < group->feature_count; ++i) {
     if (group->features[i]->data.kind == ROCPROFILER_DATA_KIND_INT64) {
       group_entry.features = group->features[i];
@@ -418,8 +603,12 @@ void write_metrics(const context_entry_t* entry, const char* label){
 	output_results(entry, label);
 };
 
+
+
 // Dump stored context entry
 bool dump_context_entry(context_entry_t* entry, bool to_clean = true) {
+  hsa_status_t status = HSA_STATUS_ERROR;
+
   volatile std::atomic<bool>* valid = reinterpret_cast<std::atomic<bool>*>(&entry->valid);
   while (valid->load() == false) sched_yield();
 
@@ -429,19 +618,20 @@ bool dump_context_entry(context_entry_t* entry, bool to_clean = true) {
       return false;
     }
   }
+
   ++context_collected;
 
-  hsa_status_t status = HSA_STATUS_ERROR;
   const uint32_t index = entry->index;
   if (index != UINT32_MAX) {
 	const std::string nik_name = (to_truncate_names == 0) ? entry->data.kernel_name : filtr_kernel_name(entry->data.kernel_name);
 	const AgentInfo* agent_info = HsaRsrcFactory::Instance().GetAgentInfo(entry->agent);
-
+	mtx.lock();
 	write_context_entry_wrapper(entry, record, nik_name, agent_info);
+	mtx.unlock();
   }
   if (record && to_clean) {
-	delete record;
-	entry->data.record = NULL;
+    delete record;
+    entry->data.record = NULL;
   }
 
   rocprofiler_group_t& group = entry->group;
@@ -450,18 +640,20 @@ bool dump_context_entry(context_entry_t* entry, bool to_clean = true) {
       status = rocprofiler_group_get_data(&group);
       check_status(status);
       if (verbose == 1) write_group_wrapper(entry, "group0-data");
-	  
+
       status = rocprofiler_get_metrics(group.context);
       check_status(status);
-	  
     }
     std::ostringstream oss;
     oss << index << "__" << filtr_kernel_name(entry->data.kernel_name);
     write_metrics_wrapper(entry, oss.str().substr(0, KERNEL_NAME_LEN_MAX).c_str());
     if (to_clean) free(const_cast<char*>(entry->data.kernel_name));
+
+    // Finishing cleanup
+    // Deleting profiling context will delete all allocated resources
+    if (to_clean) rocprofiler_close(group.context);
   }
-	
-  if(to_clean && entry->group.context != NULL) rocprofiler_close(entry->group.context);
+
   return true;
 }
 
@@ -778,6 +970,75 @@ hsa_status_t dispatch_callback_opt(const rocprofiler_callback_data_t* callback_d
   return status;
 }
 
+hsa_status_t dispatch_callback_con(const rocprofiler_callback_data_t* callback_data, void* user_data,
+                               rocprofiler_group_t* group) {
+  // Passed tool data
+  callbacks_data_t* tool_data = reinterpret_cast<callbacks_data_t*>(user_data);
+  // HSA status
+  hsa_status_t status = HSA_STATUS_ERROR;
+
+  // Checking dispatch condition
+  bool enabled = false;
+  if (tool_data->filter_on == 1) {
+    enabled = check_filter(callback_data, tool_data);
+    if (enabled == false) next_context_count();
+  }
+
+  // Checking context entry
+  bool found = false;
+  context_entry_t* entry = ck_ctx_entry(callback_data->agent, found);
+  if ((enabled == true) && (found == true)) return HSA_STATUS_SUCCESS;
+
+  if (found == false) {
+    *group = entry->group;
+  } else {
+    // Profiling context
+    rocprofiler_t* context = NULL;
+
+    // context properties
+    rocprofiler_properties_t properties{};
+    properties.handler = (result_prefix != NULL) ? context_handler_con : NULL;
+    properties.handler_arg = (void*)entry;
+
+    rocprofiler_feature_t* features = tool_data->features;
+    unsigned feature_count = tool_data->feature_count;
+
+    // Open profiling context
+    status = rocprofiler_open(callback_data->agent, features, feature_count,
+                              &context, 0 /*ROCPROFILER_MODE_SINGLEGROUP*/, &properties);
+    check_status(status);
+
+    // Check that we have only one profiling group
+    uint32_t group_count = 0;
+    status = rocprofiler_group_count(context, &group_count);
+    check_status(status);
+    assert(group_count == 1);
+    // Get group[0]
+    const uint32_t group_index = 0;
+    status = rocprofiler_get_group(context, group_index, group);
+    check_status(status);
+
+    // Fill profiling context entry
+    entry->index = UINT32_MAX;
+    entry->agent = callback_data->agent;
+    entry->group = *group;
+    entry->features = features;
+    entry->feature_count = feature_count;
+    entry->data = *callback_data;
+    entry->data.kernel_name = strdup(callback_data->kernel_name);
+    entry->file_handle = tool_data->file_handle;
+    entry->active = true;
+    reinterpret_cast<std::atomic<bool>*>(&entry->valid)->store(true);
+
+    if (trace_on) {
+      fprintf(stdout, "tool::dispatch_con: context_map %d tid %u\n", (int)(ctx_a_map->size()), GetTid());
+      fflush(stdout);
+    }
+  }
+
+  return status;
+}
+
 hsa_status_t destroy_callback(hsa_queue_t* queue, void*) {
   results_output_break();
   dump_context_array(queue);
@@ -947,6 +1208,86 @@ hsa_status_t hsa_ksymbol_cb(rocprofiler_hsa_cb_id_t id,
   return HSA_STATUS_SUCCESS;
 }
 
+// code object callback
+hsa_status_t codeobj_callback(
+  rocprofiler_hsa_cb_id_t id,
+  const rocprofiler_hsa_callback_data_t* data,
+  void* arg)
+{
+  static std::atomic<uint64_t> codeobj_counter{};
+  static FILE* codeobj_csv_file = NULL;
+
+  if (data == NULL) {
+    printf("codeobj_callback error, data == 0\n"); fflush(stdout);
+    abort();
+  }
+
+  if (id == ROCPROFILER_HSA_CB_ID_CODEOBJ) {
+    const uint64_t codeobj_index = codeobj_counter.fetch_add(1, std::memory_order_relaxed);
+    const uint64_t ts = HsaRsrcFactory::Instance().TimestampNs();
+    const int unload = data->codeobj.unload;
+    const uint64_t load_base = data->codeobj.load_base;
+    const uint64_t load_size = data->codeobj.load_size;
+    const int fd1 = data->codeobj.storage_file;
+    const uint64_t count = (fd1 != -1) ? lseek(fd1, 0, SEEK_END) : data->codeobj.memory_size;
+    void* buf = (fd1 != -1) ? malloc(count) : reinterpret_cast<void*>(data->codeobj.memory_base);
+
+    if (fd1 != -1) {
+      ssize_t ret = read(fd1, buf, count);
+      if (ret == -1) {
+        perror("codeobj_callback::read()");
+        abort();
+      }
+      const uint64_t rcount = (uint64_t)ret;
+      if (rcount != count) {
+        printf("codeobj_callback::read() ret(%lu) != count(%lu)\n", rcount, count);
+        abort();
+      }
+      //close(fd1);
+    }
+
+    std::ostringstream oss;
+    oss << "codeobj/" << codeobj_index << ".obj" << std::dec;
+    const char* codeobj_data_name = strdup(oss.str().c_str());
+    const char* codeobj_csv_name = "codeobj/index.csv";
+
+    if (codeobj_csv_file == NULL) {
+      codeobj_csv_file = fopen(codeobj_csv_name, "w");
+      if (codeobj_csv_file == NULL) {
+        fprintf(stderr, "file(\"%s\")\n", codeobj_csv_name); fflush(stderr);
+        perror("codeobj_callback::fopen"); fflush(stderr);
+        abort();
+      }
+      fprintf(codeobj_csv_file, "file,ts,base,size,unload\n");
+    }
+    fprintf(codeobj_csv_file, "%s,%lu,0x%lx,0x%lx,%d\n", codeobj_data_name, ts, load_base, load_size, unload);
+    fflush(codeobj_csv_file);
+
+    int fd2 = open(codeobj_data_name, O_RDWR|O_CREAT, 0777);
+    if (fd2 == -1) {
+      fprintf(stderr, "file(\"%s\")\n", codeobj_data_name); fflush(stderr);
+      perror("codeobj_callback::open()"); fflush(stderr);
+      abort();
+    }
+
+    ssize_t ret = write(fd2, buf, count);
+    if (ret == -1) {
+      perror("codeobj_callback::write()");
+      abort();
+    }
+    const uint64_t wcount = (uint64_t)ret;
+    if (wcount != count) {
+      printf("codeobj_callback::write() ret(%lu) != count(%lu)\n", wcount, count);
+      abort();
+    }
+
+    close(fd2);
+    free((void*)codeobj_data_name);
+  }
+
+  return HSA_STATUS_SUCCESS;
+}
+
 // Tool constructor
 extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
 {
@@ -976,7 +1317,7 @@ extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
     rcpath = std::string(pkg_dir) + "/" + rcfile_name;
     rcfile = xml::Xml::Create(rcpath);
   }
-
+  
   //Load CTF_LIB if enabled
   const char* ctf_format = getenv("CTF_FORMAT");
   if(ctf_format != NULL){
@@ -1026,7 +1367,7 @@ extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
 	write_context_entry_wrapper = write_context_entry;
 	write_group_wrapper = write_group;
 	write_metrics_wrapper = write_metrics;
-  }
+  }  
   
   if (rcfile != NULL) {
     // Getting defaults
@@ -1086,10 +1427,20 @@ extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
   // Set HSA intercepting
   check_env_var("ROCP_HSA_INTERC", settings->hsa_intercepting);
   if (settings->hsa_intercepting) rocprofiler_set_hsa_callbacks(hsa_callbacks, (void*)14);
-  // Enable concurrent mode
+  // Enable code objects dumping
+  check_env_var("ROCP_OBJ_DUMPING", settings->obj_dumping);
+  rocprofiler_hsa_callbacks_t ocb{};
+  ocb.codeobj = codeobj_callback;
+  if (settings->obj_dumping) {
+    rocprofiler_set_hsa_callbacks(ocb, (void*)1);
+    settings->hsa_intercepting = 1;
+  }
+  // Enable concurrent SQTT
   check_env_var("ROCP_K_CONCURRENT", settings->k_concurrent);
   // Enable optmized mode
   check_env_var("ROCP_OPT_MODE", settings->opt_mode);
+  // SPM KFD mode
+  check_env_var("ROCP_SPM_KFD_MODE", spm_kfd_mode);
 
   is_trace_local = settings->trace_local;
 
@@ -1157,10 +1508,11 @@ extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
       *it = accum;
     }
   }
-
+  
   if(ctf_plugin){
 	init_kernel_ctf_tracing(result_prefix, metrics_vec, verbose);
   }
+
   // Getting GPU indexes
   gpu_index_vec = new std::vector<uint32_t>;
   get_xml_array(xml, "top.metric", "gpu_index", ",", gpu_index_vec, "  ");
@@ -1200,13 +1552,117 @@ extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
   }
   if (metrics_vec.size()) printf("\n");
 
-  const uint32_t features_found = metrics_vec.size();
+  // Parsing traces
+  printf("  %d traces\n", (int)traces_list.size());
+  uint32_t traces_found = 0;
+  unsigned index = metrics_vec.size();
+  for (const auto* entry : traces_list) {
+    auto it = entry->opts.find("name");
+    if (it == entry->opts.end()) fatal("ROCProfiler: trace name is missing");
+    const std::string& name = it->second;
+    if ((name != "SQTT") && (name != "SPM")) break;
+    if (name == "SPM") is_spm_trace = true;
+
+    traces_found++;
+
+    bool to_copy_data = false;
+    for (const auto& opt : entry->opts) {
+      if (opt.first == "name") continue;
+      else if (opt.first == "copy") to_copy_data = (opt.second == "true");
+      else fatal("ROCProfiler: Bad trace property '" + opt.first + "'");
+    }
+
+    // Parsing parameters
+    std::map<std::string, hsa_ven_amd_aqlprofile_parameter_name_t> parameters_dict;
+    parameters_dict["TARGET_CU"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_COMPUTE_UNIT_TARGET;
+    parameters_dict["VM_ID_MASK"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_VM_ID_MASK;
+    parameters_dict["MASK"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_MASK;
+    parameters_dict["TOKEN_MASK"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_TOKEN_MASK;
+    parameters_dict["TOKEN_MASK2"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_TOKEN_MASK2;
+    parameters_dict["SE_MASK"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_SE_MASK;
+    parameters_dict["SAMPLE_RATE"] =
+        HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_SAMPLE_RATE;
+    //parameters_dict["K_CON"] =
+    //    HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_K_CONCURRENT;
+
+    printf("    %s (", name.c_str());
+    features[index] = {};
+    features[index].kind = ROCPROFILER_FEATURE_KIND_TRACE;
+    features[index].data.result_bytes.copy = to_copy_data;
+    features[index].name = strdup(name.c_str());
+
+    uint32_t parameter_count = 0;
+    for (const auto* node : entry->nodes) {
+      auto& tag = node->tag;
+      auto& params = node->opts;
+      parameter_count = params.size();
+
+      if (tag != "parameters") fatal("ROCProfiler: trace node is not supported '" + tag + "'");
+
+      if (settings->k_concurrent != 0) parameter_count += 1;
+
+      if (parameter_count != 0) {
+        rocprofiler_parameter_t* parameters = new rocprofiler_parameter_t[parameter_count];
+        unsigned p_index = 0;
+        for (const auto& v : params) {
+          const std::string parameter_name = v.first;
+          if (parameters_dict.find(parameter_name) == parameters_dict.end()) {
+            fatal("ROCProfiler: bad trace parameter '" + name + ":" + parameter_name + "'");
+          }
+          const uint32_t value = strtol(v.second.c_str(), NULL, 0);
+          printf("\n      %s = 0x%x", parameter_name.c_str(), value);
+          parameters[p_index] = {};
+          parameters[p_index].parameter_name = parameters_dict[parameter_name];
+          parameters[p_index].value = value;
+          ++p_index;
+        }
+
+        if (settings->k_concurrent != 0) {
+          parameters[parameter_count - 1] = {};
+          parameters[parameter_count - 1].parameter_name = HSA_VEN_AMD_AQLPROFILE_PARAMETER_NAME_K_CONCURRENT;
+          parameters[parameter_count - 1].value = 1;
+        }
+
+        features[index].parameters = parameters;
+        features[index].parameter_count = parameter_count;
+      }
+    }
+
+    if (parameter_count != 0) printf("\n    ");
+    printf(")\n");
+    fflush(stdout);
+    ++index;
+  }
+  fflush(stdout);
+
+  if ((traces_found != 0) && (is_spm_trace == false) && (metrics_vec.size() != 0)) {
+    fatal("ROCProfiler: SQTT and counters are not supported together");
+  }
+
+  const uint32_t features_found = metrics_vec.size() + traces_found;
+
+  // set a value to indicate tracing mode
+  if (settings->k_concurrent != 0) settings->k_concurrent = (traces_found == 0) ? 1 : 2;
+
+  if (is_spm_trace) {
+    for (uint32_t index = 0; index < features_found; index++) {
+      features[index].kind = ROCPROFILER_FEATURE_KIND_TRACE;
+    }
+  }
 
   // Context array aloocation
   context_array = new context_array_t;
 
   bool opt_mode_cond = ((features_found != 0) &&
                               (metrics_set->empty()) &&
+                              (traces_found == 0) &&
+                              (is_spm_trace == false) &&
                               (filter_disabled == true));
   if (settings->opt_mode == 0) opt_mode_cond = false;
   if (!opt_mode_cond) settings->opt_mode = 0;
@@ -1255,10 +1711,16 @@ extern "C" PUBLIC_API void OnLoadToolProp(rocprofiler_settings_t* settings)
     rocprofiler_set_hsa_callbacks(cs, NULL);
     settings->code_obj_tracking = 0;
     settings->hsa_intercepting = 1;
+  } else if (is_spm_trace && spm_kfd_mode) {
+    spm_ctrl_start(features, features_found);
   } else {
     // Adding dispatch observer
     rocprofiler_queue_callbacks_t callbacks_ptrs{0};
-    callbacks_ptrs.dispatch = dispatch_callback;
+    if (settings->k_concurrent == 2) {      // concurrent trace
+      callbacks_ptrs.dispatch = dispatch_callback_con;
+    } else {                                // pmc
+      callbacks_ptrs.dispatch = dispatch_callback;
+    }
     callbacks_ptrs.destroy = destroy_callback;
 
     callbacks_data = new callbacks_data_t{};
@@ -1304,6 +1766,11 @@ void rocprofiler_unload(bool is_destr) {
   if (pthread_mutex_unlock(&mutex) != 0) {
     perror("pthread_mutex_unlock");
     abort();
+  }
+
+  // stopping SPM trace if it was enabled
+  if (is_spm_trace && spm_kfd_mode) {
+    spm_ctrl_stop();
   }
 
   // Unregister dispatch callback
