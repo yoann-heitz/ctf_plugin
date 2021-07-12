@@ -179,6 +179,8 @@ usage() {
   echo "        </parameters>"
   echo "      </trace>"
   echo ""
+  echo " --ctf-format - to get the traces in CTF format : option -d is required and the CTF trace will be stored in the specified directory"
+  echo "      rocTX will not be traced in CTF format"
   echo "  --trace-start <on|off> - to enable tracing on start [on]"
   echo "  --trace-period <dealy:length:rate> - to enable trace with initial delay, with periodic sample length and rate"
   echo "    Supported time formats: <number(m|s|ms|us)>"
