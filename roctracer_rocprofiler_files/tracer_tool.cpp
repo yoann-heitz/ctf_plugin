@@ -351,7 +351,6 @@ void hsa_api_callback(
     entry->tid = GetTid();
     entry->data = *data;
     entry->valid.store(roctracer::TRACE_ENTRY_COMPL, std::memory_order_release);
-    hsa_begin_timestamp = timer->timestamp_fn_ns();
   }
 }
 
